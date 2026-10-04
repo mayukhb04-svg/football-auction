@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ultimate FC Draft Auction & Tournament</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+  body { font-family: 'Outfit', sans-serif; }
+  .pitch-bg {
+    background: radial-gradient(circle, #166534 0%, #14532d 100%);
+    box-shadow: inset 0 0 40px rgba(0,0,0,0.6);
+  }
+  /* Custom scrollbar for logs and lists */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #0f172a; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+</style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col">
+
+<div id="app" class="flex-1 flex flex-col max-w-7xl mx-auto w-full p-4 md:p-6">
+  <!-- Dynamic screens rendered via JS -->
+</div>
+
+<script>
+const GLOBAL_PLAYERS = [
+  // ICONS & HEROES (1-30)
+  { id: 1, name: "Pelé", cat: "Icon", rating: 98, pos: "ST", base: 140, pac: 95, sho: 96, pas: 93, dri: 96, def: 55, phy: 76 },
+  { id: 2, name: "Diego Maradona", cat: "Icon", rating: 97, pos: "CAM", base: 135, pac: 92, sho: 93, pas: 95, dri: 98, def: 42, phy: 74 },
+  { id: 3, name: "Johan Cruyff", cat: "Icon", rating: 96, pos: "CF", base: 130, pac: 91, sho: 94, pas: 92, dri: 95, def: 45, phy: 72 },
+  { id: 4, name: "Zinedine Zidane", cat: "Icon", rating: 96, pos: "CAM", base: 130, pac: 80, sho: 92, pas: 97, dri: 95, def: 60, phy: 82 },
+  { id: 5, name: "Ronaldo Nazário", cat: "Icon", rating: 96, pos: "ST", base: 130, pac: 97, sho: 95, pas: 80, dri: 94, def: 40, phy: 88 },
+  { id: 6, name: "Ronaldinho", cat: "Icon", rating: 95, pos: "LW", base: 125, pac: 93, sho: 91, pas: 92, dri: 97, def: 38, phy: 78 },
+  { id: 7, name: "Paolo Maldini", cat: "Icon", rating: 95, pos: "CB", base: 120, pac: 82, sho: 60, pas: 78, dri: 75, def: 96, phy: 88 },
+  { id: 8, name: "Lev Yashin", cat: "Icon", rating: 94, pos: "GK", base: 115, pac: 85, sho: 30, pas: 82, dri: 80, def: 94, phy: 85 },
+  { id: 9, name: "Thierry Henry", cat: "Icon", rating: 94, pos: "ST", base: 115, pac: 94, sho: 93, pas: 84, dri: 92, def: 45, phy: 80 },
+  { id: 10, name: "Cafu", cat: "Icon", rating: 93, pos: "RB", base: 110, pac: 93, sho: 74, pas: 86, dri: 88, def: 88, phy: 84 },
+  { id: 11, name: "Ferenc Puskás", cat: "Icon", rating: 94, pos: "ST", base: 115, pac: 88, sho: 97, pas: 85, dri: 91, def: 42, phy: 76 },
+  { id: 12, name: "Garrincha", cat: "Icon", rating: 94, pos: "RW", base: 115, pac: 94, sho: 88, pas: 90, dri: 97, def: 35, phy: 68 },
+  { id: 13, name: "Eusébio", cat: "Icon", rating: 94, pos: "ST", base: 115, pac: 95, sho: 95, pas: 83, dri: 93, def: 48, phy: 82 },
+  { id: 14, name: "Bobby Charlton", cat: "Icon", rating: 93, pos: "CM", base: 110, pac: 84, sho: 92, pas: 92, dri: 89, def: 65, phy: 75 },
+  { id: 15, name: "Marco van Basten", cat: "Icon", rating: 93, pos: "ST", base: 110, pac: 85, sho: 96, pas: 81, dri: 88, def: 40, phy: 85 },
+  { id: 16, name: "Franco Baresi", cat: "Icon", rating: 93, pos: "CB", base: 110, pac: 76, sho: 55, pas: 82, dri: 78, def: 95, phy: 82 },
+  { id: 17, name: "Roberto Carlos", cat: "Icon", rating: 92, pos: "LB", base: 105, pac: 95, sho: 86, pas: 84, dri: 85, def: 84, phy: 89 },
+  { id: 18, name: "Xavi", cat: "Icon", rating: 93, pos: "CM", base: 110, pac: 78, sho: 78, pas: 96, dri: 91, def: 72, phy: 70 },
+  { id: 19, name: "Andrés Iniesta", cat: "Icon", rating: 93, pos: "CM", base: 110, pac: 82, sho: 80, pas: 94, dri: 96, def: 68, phy: 64 },
+  { id: 20, name: "Iker Casillas", cat: "Icon", rating: 92, pos: "GK", base: 105, pac: 88, sho: 28, pas: 75, dri: 80, def: 92, phy: 82 },
+  { id: 21, name: "Lothar Matthäus", cat: "Icon", rating: 93, pos: "CDM", base: 110, pac: 83, sho: 86, pas: 88, dri: 86, def: 91, phy: 88 },
+  { id: 22, name: "Ruud Gullit", cat: "Icon", rating: 93, pos: "CF", base: 115, pac: 88, sho: 89, pas: 89, dri: 90, def: 85, phy: 91 },
+  { id: 23, name: "Patrick Vieira", cat: "Icon", rating: 92, pos: "CDM", base: 105, pac: 82, sho: 75, pas: 82, dri: 83, def: 91, phy: 94 },
+  { id: 24, name: "Alessandro Nesta", cat: "Icon", rating: 92, pos: "CB", base: 105, pac: 75, sho: 40, pas: 72, dri: 74, def: 94, phy: 86 },
+  { id: 25, name: "Philipp Lahm", cat: "Icon", rating: 91, pos: "RB", base: 100, pac: 84, sho: 68, pas: 87, dri: 89, def: 90, phy: 72 },
+  { id: 26, name: "Fabio Cannavaro", cat: "Icon", rating: 91, pos: "CB", base: 100, pac: 83, sho: 45, pas: 70, dri: 76, def: 93, phy: 82 },
+  { id: 27, name: "Kaká", cat: "Icon", rating: 92, pos: "CAM", base: 105, pac: 94, sho: 89, pas: 88, dri: 93, def: 52, phy: 77 },
+  { id: 28, name: "Dennis Bergkamp", cat: "Icon", rating: 90, pos: "CF", base: 98, pac: 82, sho: 91, pas: 91, dri: 92, def: 48, phy: 78 },
+  { id: 29, name: "Peter Schmeichel", cat: "Icon", rating: 92, pos: "GK", base: 105, pac: 86, sho: 25, pas: 76, dri: 78, def: 92, phy: 88 },
+  { id: 30, name: "Andrea Pirlo", cat: "Icon", rating: 92, pos: "CM", base: 105, pac: 68, sho: 82, pas: 95, dri: 89, def: 78, phy: 66 },
+
+  // CURRENT ELITE & GLOBAL STARS (31-200)
+  { id: 31, name: "Lionel Messi", cat: "Current", rating: 94, pos: "RW", base: 120, pac: 85, sho: 92, pas: 93, dri: 95, def: 35, phy: 65 },
+  { id: 32, name: "Cristiano Ronaldo", cat: "Current", rating: 91, pos: "ST", base: 105, pac: 84, sho: 93, pas: 78, dri: 84, def: 38, phy: 77 },
+  { id: 33, name: "Kylian Mbappé", cat: "Current", rating: 92, pos: "ST", base: 115, pac: 97, sho: 90, pas: 80, dri: 92, def: 36, phy: 78 },
+  { id: 34, name: "Erling Haaland", cat: "Current", rating: 92, pos: "ST", base: 115, pac: 89, sho: 94, pas: 68, dri: 80, def: 45, phy: 88 },
+  { id: 35, name: "Jude Bellingham", cat: "Current", rating: 91, pos: "CAM", base: 110, pac: 81, sho: 87, pas: 86, dri: 89, def: 80, phy: 84 },
+  { id: 36, name: "Kevin De Bruyne", cat: "Current", rating: 91, pos: "CM", base: 110, pac: 72, sho: 88, pas: 94, dri: 87, def: 64, phy: 76 },
+  { id: 37, name: "Vinícius Jr.", cat: "Current", rating: 91, pos: "LW", base: 110, pac: 95, sho: 85, pas: 83, dri: 94, def: 30, phy: 68 },
+  { id: 38, name: "Rodri", cat: "Current", rating: 91, pos: "CDM", base: 110, pac: 65, sho: 78, pas: 87, dri: 83, def: 88, phy: 85 },
+  { id: 39, name: "Harry Kane", cat: "Current", rating: 90, pos: "ST", base: 100, pac: 70, sho: 93, pas: 86, dri: 83, def: 50, phy: 82 },
+  { id: 40, name: "Mohamed Salah", cat: "Current", rating: 90, pos: "RW", base: 100, pac: 92, sho: 89, pas: 82, dri: 89, def: 45, phy: 75 },
+  { id: 41, name: "Virgil van Dijk", cat: "Current", rating: 90, pos: "CB", base: 100, pac: 78, sho: 60, pas: 76, dri: 74, def: 91, phy: 87 },
+  { id: 42, name: "Thibaut Courtois", cat: "Current", rating: 90, pos: "GK", base: 100, pac: 84, sho: 25, pas: 75, dri: 80, def: 90, phy: 86 },
+  { id: 43, name: "Marc-André ter Stegen", cat: "Current", rating: 89, pos: "GK", base: 95, pac: 82, sho: 24, pas: 85, dri: 82, def: 88, phy: 80 },
+  { id: 44, name: "Alisson", cat: "Current", rating: 89, pos: "GK", base: 95, pac: 85, sho: 25, pas: 83, dri: 84, def: 88, phy: 84 },
+  { id: 45, name: "Ederson", cat: "Current", rating: 88, pos: "GK", base: 90, pac: 86, sho: 28, pas: 90, dri: 85, def: 86, phy: 82 },
+  { id: 46, name: "Ruben Dias", cat: "Current", rating: 89, pos: "CB", base: 95, pac: 69, sho: 38, pas: 71, dri: 70, def: 90, phy: 89 },
+  { id: 47, name: "Antonio Rüdiger", cat: "Current", rating: 88, pos: "CB", base: 90, pac: 85, sho: 48, pas: 73, dri: 72, def: 87, phy: 88 },
+  { id: 48, name: "William Saliba", cat: "Current", rating: 88, pos: "CB", base: 90, pac: 83, sho: 40, pas: 75, dri: 76, def: 88, phy: 82 },
+  { id: 49, name: "Marquinhos", cat: "Current", rating: 87, pos: "CB", base: 85, pac: 79, sho: 42, pas: 78, dri: 76, def: 87, phy: 78 },
+  { id: 50, name: "Ronald Araújo", cat: "Current", rating: 87, pos: "CB", base: 85, pac: 84, sho: 50, pas: 68, dri: 71, def: 87, phy: 86 },
+  { id: 51, name: "Declan Rice", cat: "Current", rating: 88, pos: "CDM", base: 90, pac: 77, sho: 76, pas: 83, dri: 82, def: 87, phy: 85 },
+  { id: 52, name: "Martin Ødegaard", cat: "Current", rating: 89, pos: "CAM", base: 95, pac: 78, sho: 83, pas: 90, dri: 89, def: 65, phy: 68 },
+  { id: 53, name: "Federico Valverde", cat: "Current", rating: 89, pos: "CM", base: 95, pac: 88, sho: 84, pas: 85, dri: 85, def: 81, phy: 86 },
+  { id: 54, name: "Pedri", cat: "Current", rating: 88, pos: "CM", base: 90, pac: 79, sho: 75, pas: 87, dri: 90, def: 74, phy: 70 },
+  { id: 55, name: "Gavi", cat: "Current", rating: 85, pos: "CM", base: 75, pac: 77, sho: 68, pas: 80, dri: 85, def: 78, phy: 79 },
+  { id: 56, name: "Jamal Musiala", cat: "Current", rating: 89, pos: "CAM", base: 95, pac: 86, sho: 82, pas: 85, dri: 93, def: 55, phy: 64 },
+  { id: 57, name: "Florian Wirtz", cat: "Current", rating: 89, pos: "CAM", base: 95, pac: 83, sho: 83, pas: 89, dri: 91, def: 56, phy: 67 },
+  { id: 58, name: "Bukayo Saka", cat: "Current", rating: 89, pos: "RW", base: 95, pac: 87, sho: 84, pas: 86, dri: 89, def: 66, phy: 72 },
+  { id: 59, name: "Phil Foden", cat: "Current", rating: 89, pos: "LW", base: 95, pac: 84, sho: 86, pas: 85, dri: 91, def: 58, phy: 60 },
+  { id: 60, name: "Lamine Yamal", cat: "Current", rating: 88, pos: "RW", base: 90, pac: 86, sho: 80, pas: 84, dri: 91, def: 42, phy: 62 },
+  { id: 61, name: "Son Heung-min", cat: "Current", rating: 87, pos: "LM", base: 85, pac: 88, sho: 89, pas: 82, dri: 86, def: 50, phy: 69 },
+  { id: 62, name: "Rafael Leão", cat: "Current", rating: 87, pos: "LW", base: 85, pac: 94, sho: 80, pas: 78, dri: 88, def: 32, phy: 78 },
+  { id: 63, name: "Ousmane Dembélé", cat: "Current", rating: 86, pos: "RW", base: 80, pac: 93, sho: 78, pas: 84, dri: 89, def: 30, phy: 58 },
+  { id: 64, name: "Khvicha Kvaratskhelia", cat: "Current", rating: 87, pos: "LW", base: 85, pac: 87, sho: 81, pas: 83, dri: 90, def: 40, phy: 72 },
+  { id: 65, name: "Lautaro Martínez", cat: "Current", rating: 89, pos: "ST", base: 95, pac: 84, sho: 89, pas: 75, dri: 85, def: 52, phy: 84 },
+  { id: 66, name: "Victor Osimhen", cat: "Current", rating: 88, pos: "ST", base: 90, pac: 93, sho: 87, pas: 66, dri: 81, def: 40, phy: 82 },
+  { id: 67, name: "Alexander Isak", cat: "Current", rating: 86, pos: "ST", base: 80, pac: 89, sho: 85, pas: 76, dri: 86, def: 35, phy: 74 },
+  { id: 68, name: "Dolla Vlahović", cat: "Current", rating: 85, pos: "ST", base: 75, pac: 80, sho: 86, pas: 68, dri: 78, def: 38, phy: 82 },
+  { id: 69, name: "Antoine Griezmann", cat: "Current", rating: 88, pos: "ST", base: 90, pac: 80, sho: 87, pas: 87, dri: 87, def: 60, phy: 72 },
+  { id: 70, name: "Robert Lewandowski", cat: "Current", rating: 89, pos: "ST", base: 95, pac: 75, sho: 92, pas: 79, dri: 84, def: 42, phy: 81 },
+  // Generating more robust players to hit 200 items cleanly
+  ...Array.from({ length: 130 }, (_, i) => {
+    const id = 71 + i;
+    const positions = ["ST", "LW", "RW", "CAM", "CM", "CDM", "CB", "LB", "RB", "GK"];
+    const pos = positions[i % positions.length];
+    const firstNames = ["Lucas", "Matteo", "Marco", "Julian", "Gabriel", "Bruno", "Alex", "Enzo", "Nicolas", "Carlos", "David", "Christian", "Ivan", "Stefan", "Viktor"];
+    const lastNames = ["Silva", "Santos", "Fernandes", "Gomez", "Muller", "Schmidt", "Rossi", "Costa", "Popov", "Kim", "Tanaka", "Mensah", "Diallo", "Traore", "Hernandez", "Lopez"];
+    const name = `${firstNames[i % firstNames.length]} ${lastNames[(i * 3) % lastNames.length]} #${id}`;
+    const rating = 80 + (i % 8);
+    const base = 50 + (rating - 80) * 6;
+    return {
+      id,
+      name,
+      cat: "Global Star",
+      rating,
+      pos,
+      base,
+      pac: 75 + (i % 20),
+      sho: 70 + ((i * 2) % 20),
+      pas: 72 + ((i * 3) % 18),
+      dri: 74 + ((i * 4) % 18),
+      def: pos === "CB" || pos === "CDM" ? 80 + (i % 10) : 45 + (i % 20),
+      phy: 72 + (i % 18)
+    };
+  })
+];
+
+let gameState = {
+  screen: 'lobby', // lobby, auction, squad, bracket, match, summary
+  roomCode: 'FC-' + Math.floor(1000 + Math.random() * 9000),
+  hostName: '',
+  players: [], // Online players in room (up to 10)
+  myId: '',
+  myTeamName: '',
+  
+  // Auction State
+  auctionQueue: [],
+  currentAuctionIndex: 0,
+  currentBid: 0,
+  highestBidderId: null,
+  auctionTimer: 15,
+  timerInterval: null,
+  
+  // Squad Builder & Match
+  squads: {}, // { playerId: [16 players] }
+  formations: {}, // { playerId: { pos: playerObj } }
+  bracket: [], // Tournament rounds
+  currentMatch: null,
+  matchLog: []
+};
+</script>
+
+<script>
+function renderLobby() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="flex-1 flex flex-col items-center justify-center max-w-xl mx-auto w-full py-8">
+      <div class="text-center mb-8">
+        <span class="bg-blue-600/20 text-blue-400 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-blue-500/30">FC 27 Multiplayer Edition</span>
+        <h1 class="text-4xl md:text-5xl font-extrabold mt-3 tracking-tight bg-gradient-to-r from-blue-400 via-indigo-300 to-emerald-400 bg-clip-text text-transparent">Football Draft & Tournament</h1>
+        <p class="text-slate-400 mt-2 text-sm md:text-base">Build your dream squad of 16 players from a 200+ global pool and clash for glory!</p>
+      </div>
+
+      <div class="w-full bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-2xl backdrop-blur-md">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Your Manager Name</label>
+            <input type="text" id="manager-name" placeholder="e.g. Pep Guardiola" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-blue-500 font-medium text-sm">
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <button onclick="createRoom()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 flex items-center justify-center gap-2">
+              <span>🏠 Create Room</span>
+            </button>
+            <div class="flex gap-2">
+              <input type="text" id="room-code-input" placeholder="Room Code" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-3 text-white uppercase text-center font-bold tracking-widest text-sm focus:outline-none focus:border-emerald-500">
+              <button onclick="joinRoom()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-600/30 transition transform active:scale-95 whitespace-nowrap">Join</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 pt-6 border-t border-slate-800 text-center">
+          <p class="text-xs text-slate-500">Need solo practice? <button onclick="startSoloMode()" class="text-blue-400 underline font-semibold hover:text-blue-300 ml-1">Start with AI Opponents</button></p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function createRoom() {
+  const nameInput = document.getElementById('manager-name').value.trim();
+  if (!nameInput) {
+    alert("Please enter your manager name!");
+    return;
+  }
+  gameState.myId = 'p_' + Math.random().toString(36).substr(2, 6);
+  gameState.hostName = nameInput;
+  gameState.myTeamName = nameInput + "'s XI";
+  gameState.players = [{ id: gameState.myId, name: nameInput, team: gameState.myTeamName, isHost: true }];
+  
+  renderLobbyRoom();
+}
+
+function joinRoom() {
+  const nameInput = document.getElementById('manager-name').value.trim();
+  const codeInput = document.getElementById('room-code-input').value.trim().toUpperCase();
+  if (!nameInput || !codeInput) {
+    alert("Please enter both your name and room code!");
+    return;
+  }
+  gameState.myId = 'p_' + Math.random().toString(36).substr(2, 6);
+  gameState.myTeamName = nameInput + "'s XI";
+  gameState.roomCode = codeInput;
+  gameState.players = [
+    { id: 'host_dummy', name: 'Host Manager', team: 'Host XI', isHost: true },
+    { id: gameState.myId, name: nameInput, team: gameState.myTeamName, isHost: false }
+  ];
+  
+  renderLobbyRoom();
+}
+
+function startSoloMode() {
+  const nameInput = document.getElementById('manager-name').value.trim() || "Manager";
+  gameState.myId = 'p_user';
+  gameState.hostName = nameInput;
+  gameState.myTeamName = nameInput + "'s XI";
+  gameState.players = [
+    { id: gameState.myId, name: nameInput, team: gameState.myTeamName, isHost: true },
+    { id: 'ai_1', name: 'Ancelotti (AI)', team: 'Madridista XI', isHost: false },
+    { id: 'ai_2', name: 'Klopp (AI)', team: 'Gegenpress XI', isHost: false },
+    { id: 'ai_3', name: 'Arteta (AI)', team: 'Gunners XI', isHost: false },
+    { id: 'ai_4', name: 'Xavi (AI)', team: 'Blaugrana XI', isHost: false },
+    { id: 'ai_5', name: 'Inzaghi (AI)', team: 'Nerazzurri XI', isHost: false },
+    { id: 'ai_6', name: 'Tuchel (AI)', team: 'Bavarian XI', isHost: false },
+    { id: 'ai_7', name: 'Pochettino (AI)', team: 'Albiceleste XI', isHost: false }
+  ];
+  renderLobbyRoom();
+}
+
+function renderLobbyRoom() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="flex-1 flex flex-col max-w-3xl mx-auto w-full py-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Room Active</span>
+          <h2 class="text-2xl font-bold mt-2">Code: <span class="text-amber-400 tracking-wider">${gameState.roomCode}</span></h2>
+          <p class="text-slate-400 text-sm mt-1">Share this code with up to 10 friends to join your draft room.</p>
+        </div>
+        <div class="bg-slate-800/80 px-4 py-3 rounded-xl border border-slate-700 text-center">
+          <div class="text-xs text-slate-400 font-semibold uppercase">Players Connected</div>
+          <div class="text-2xl font-extrabold text-blue-400">${gameState.players.length} / 10</div>
+        </div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex-1 mb-6">
+        <h3 class="text-lg font-bold mb-4 flex items-center gap-2">
+          <span>👥</span> Connected Managers
+        </h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="player-list-box">
+          ${gameState.players.map(p => `
+            <div class="bg-slate-800/60 border border-slate-700/60 p-3.5 rounded-xl flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-lg bg-blue-600/20 border border-blue-500/30 flex items-center justify-center font-bold text-blue-400">
+                  ${p.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <div class="font-bold text-sm">${p.name} ${p.id === gameState.myId ? '<span class="text-xs bg-blue-500 text-white px-1.5 py-0.5 rounded ml-1">You</span>' : ''}</div>
+                  <div class="text-xs text-slate-400">${p.team}</div>
+                </div>
+              </div>
+              ${p.isHost ? '<span class="text-xs bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30 font-semibold">Host</span>' : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div class="flex justify-between items-center">
+        <button onclick="renderLobby()" class="text-slate-400 hover:text-white text-sm font-semibold">← Leave Room</button>
+        <button onclick="startDraftAuction()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-600/30 transition transform active:scale-95 flex items-center gap-2">
+          <span>🚀 Start Draft Auction (200 Pool)</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+</script>
+
+<script>
+function startDraftAuction() {
+  // Shuffle pool of 200 players and pick a subset for the auction (e.g. players count * 16)
+  const totalNeeded = gameState.players.length * 16;
+  const shuffled = [...GLOBAL_PLAYERS].sort(() => 0.5 - Math.random());
+  gameState.auctionQueue = shuffled.slice(0, Math.max(totalNeeded, 60));
+  gameState.currentAuctionIndex = 0;
+  
+  // Initialize budgets & squads
+  gameState.budgets = {};
+  gameState.squads = {};
+  gameState.formations = {};
+  gameState.passedBidders = new Set();
+  
+  gameState.players.forEach(p => {
+    gameState.budgets[p.id] = 1000; // 1,000 Million budget
+    gameState.squads[p.id] = [];
+  });
+  
+  setupCurrentPlayerAuction();
+  renderAuctionScreen();
+}
+
+function setupCurrentPlayerAuction() {
+  if (gameState.currentAuctionIndex >= gameState.auctionQueue.length) {
+    // Auction finished! Go to squad builder
+    transitionToSquadBuilder();
+    return;
+  }
+  const cp = gameState.auctionQueue[gameState.currentAuctionIndex];
+  gameState.currentBid = cp.base;
+  gameState.highestBidderId = null;
+  gameState.passedBidders.clear();
+  gameState.auctionTimer = 15;
+  
+  if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+  gameState.timerInterval = setInterval(() => {
+    gameState.auctionTimer--;
+    const timerEl = document.getElementById('auction-timer-val');
+    if (timerEl) timerEl.innerText = gameState.auctionTimer + 's';
+    
+    if (gameState.auctionTimer <= 0) {
+      clearInterval(gameState.timerInterval);
+      resolveAuctionItem();
+    }
+  }, 1000);
+}
+
+function renderAuctionScreen() {
+  const cp = gameState.auctionQueue[gameState.currentAuctionIndex];
+  const myBudget = gameState.budgets[gameState.myId];
+  const mySquadCount = gameState.squads[gameState.myId].length;
+  const highestBidderObj = gameState.players.find(p => p.id === gameState.highestBidderId);
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="flex-1 flex flex-col max-w-5xl mx-auto w-full py-4">
+      <!-- Top Bar -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4 flex flex-wrap justify-between items-center gap-4 shadow-xl">
+        <div>
+          <span class="text-xs font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">Live Auction Arena</span>
+          <h2 class="text-xl font-extrabold mt-1">Player ${gameState.currentAuctionIndex + 1} of ${gameState.auctionQueue.length}</h2>
+        </div>
+        <div class="flex items-center gap-4">
+          <div class="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 text-center">
+            <div class="text-xs text-slate-400 font-semibold uppercase">Your Budget</div>
+            <div class="text-lg font-extrabold text-emerald-400">€${myBudget}M</div>
+          </div>
+          <div class="bg-slate-800 px-4 py-2 rounded-xl border border-slate-700 text-center">
+            <div class="text-xs text-slate-400 font-semibold uppercase">Squad Size</div>
+            <div class="text-lg font-extrabold text-blue-400">${mySquadCount} / 16</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        <!-- Centerpiece: Current Player Card -->
+        <div class="lg:col-span-2 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 border border-indigo-500/30 rounded-2xl p-6 shadow-2xl flex flex-col justify-between">
+          <div class="flex justify-between items-start">
+            <span class="bg-indigo-500/20 text-indigo-300 font-bold px-3 py-1 rounded-full text-xs border border-indigo-500/30">${cp.cat} • ${cp.pos}</span>
+            <div class="text-right">
+              <div class="text-xs text-slate-400 uppercase font-semibold">Rating</div>
+              <div class="text-3xl font-black text-amber-400">${cp.rating}</div>
+            </div>
+          </div>
+
+          <div class="text-center py-6">
+            <h1 class="text-3xl md:text-4xl font-black text-white tracking-tight">${cp.name}</h1>
+            <div class="flex justify-center gap-2 mt-4 flex-wrap">
+              <span class="bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">PAC ${cp.pac}</span>
+              <span class="bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">SHO ${cp.sho}</span>
+              <span class="bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">PAS ${cp.pas}</span>
+              <span class="bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">DRI ${cp.dri}</span>
+              <span class="bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">DEF ${cp.def}</span>
+              <span class="bg-slate-800/80 px-3 py-1.5 rounded-lg text-xs font-bold border border-slate-700">PHY ${cp.phy}</span>
+            </div>
+          </div>
+
+          <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 flex items-center justify-between mb-4">
+            <div>
+              <div class="text-xs text-slate-400 uppercase font-semibold">Current Bid</div>
+              <div class="text-2xl font-extrabold text-emerald-400">€${gameState.currentBid}M</div>
+              <div class="text-xs text-slate-400 mt-0.5">Highest Bidder: <span class="text-white font-bold">${highestBidderObj ? highestBidderObj.name : 'Starting Price'}</span></div>
+            </div>
+            <div class="text-center">
+              <div class="text-xs text-slate-400 uppercase font-semibold">Timer</div>
+              <div class="text-2xl font-black text-amber-400" id="auction-timer-val">${gameState.auctionTimer}s</div>
+            </div>
+          </div>
+
+          <!-- Bidding Actions -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button onclick="placeBid(10)" ${mySquadCount >= 16 || myBudget < gameState.currentBid + 10 ? 'disabled' : ''} class="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow transition active:scale-95 text-sm">+€10M</button>
+            <button onclick="placeBid(25)" ${mySquadCount >= 16 || myBudget < gameState.currentBid + 25 ? 'disabled' : ''} class="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow transition active:scale-95 text-sm">+€25M</button>
+            <button onclick="placeBid(50)" ${mySquadCount >= 16 || myBudget < gameState.currentBid + 50 ? 'disabled' : ''} class="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl shadow transition active:scale-95 text-sm">+€50M</button>
+            <button onclick="passCurrentAuction()" class="bg-rose-600/80 hover:bg-rose-600 text-white font-bold py-3 rounded-xl shadow transition active:scale-95 text-sm">Pass</button>
+          </div>
+        </div>
+
+        <!-- Right Side: Room Participants Bidding Status -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
+          <h3 class="font-bold text-sm uppercase text-slate-400 mb-3">Room Activity & Budgets</h3>
+          <div class="space-y-2.5 overflow-y-auto flex-1 max-h-[380px]">
+            ${gameState.players.map(p => `
+              <div class="bg-slate-800/50 border border-slate-700/50 p-3 rounded-xl flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-sm">${p.name}</div>
+                  <div class="text-xs text-slate-400">Squad: ${gameState.squads[p.id].length}/16</div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm font-extrabold text-emerald-400">€${gameState.budgets[p.id]}M</div>
+                  <div class="text-[10px] text-slate-500 font-semibold">${gameState.highestBidderId === p.id ? '🔥 Leading' : 'Active'}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          <button onclick="forceNextPlayer()" class="mt-4 w-full bg-slate-800 hover:bg-slate-700 text-xs font-bold py-2.5 rounded-xl border border-slate-700 text-slate-300 transition">⏩ Fast-Forward / Skip</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function placeBid(increment) {
+  const myBudget = gameState.budgets[gameState.myId];
+  const mySquadCount = gameState.squads[gameState.myId].length;
+  if (mySquadCount >= 16) {
+    alert("You have already reached the maximum limit of 16 players!");
+    return;
+  }
+  const newBid = gameState.currentBid + increment;
+  if (myBudget < newBid) {
+    alert("You do not have enough budget for this bid!");
+    return;
+  }
+  
+  gameState.currentBid = newBid;
+  gameState.highestBidderId = gameState.myId;
+  gameState.auctionTimer = 15; // Reset timer on bid
+  
+  // Simulate AI bids if solo mode
+  triggerAIBidsIfNeeded();
+  renderAuctionScreen();
+}
+
+function passCurrentAuction() {
+  gameState.passedBidders.add(gameState.myId);
+  // If user passes and no one else is bidding or timer is fast, resolve
+  resolveAuctionItem();
+}
+
+function triggerAIBidsIfNeeded() {
+  // If playing against AI, give AI a chance to counter bid randomly
+  gameState.players.forEach(p => {
+    if (p.id !== gameState.myId && p.id !== gameState.highestBidderId) {
+      if (Math.random() < 0.4 && gameState.budgets[p.id] >= gameState.currentBid + 15 && gameState.squads[p.id].length < 16) {
+        gameState.currentBid += 15;
+        gameState.highestBidderId = p.id;
+        gameState.auctionTimer = 15;
+      }
+    }
+  });
+}
+
+function forceNextPlayer() {
+  if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+  resolveAuctionItem();
+}
+
+function resolveAuctionItem() {
+  if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+  const cp = gameState.auctionQueue[gameState.currentAuctionIndex];
+  
+  if (gameState.highestBidderId) {
+    gameState.budgets[gameState.highestBidderId] -= gameState.currentBid;
+    gameState.squads[gameState.highestBidderId].push({ ...cp, cost: gameState.currentBid });
+  }
+  
+  gameState.currentAuctionIndex++;
+  setupCurrentPlayerAuction();
+  if (gameState.currentAuctionIndex < gameState.auctionQueue.length) {
+    renderAuctionScreen();
+  }
+}
+</script>
+
+<script>
+function transitionToSquadBuilder() {
+  // Auto-assign first 11 players to 4-3-3 formation and 5 to bench if not set
+  gameState.players.forEach(p => {
+    const squad = gameState.squads[p.id] || [];
+    const formation = {};
+    const slots = ["GK", "LB", "CB1", "CB2", "RB", "CM1", "CAM", "CM2", "LW", "ST", "RW"];
+    
+    slots.forEach((slot, idx) => {
+      if (squad[idx]) formation[slot] = squad[idx];
+    });
+    gameState.formations[p.id] = formation;
+  });
+
+  renderSquadBuilderScreen();
+}
+
+function renderSquadBuilderScreen() {
+  const mySquad = gameState.squads[gameState.myId] || [];
+  const myFormation = gameState.formations[gameState.myId] || {};
+  const assignedIds = new Set(Object.values(myFormation).map(player => player ? player.id : null));
+  const unassignedPlayers = mySquad.filter(player => !assignedIds.has(player.id));
+
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="flex-1 flex flex-col max-w-6xl mx-auto w-full py-4">
+      <!-- Top Banner -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4 flex justify-between items-center shadow-xl">
+        <div>
+          <span class="text-xs font-bold text-blue-400 uppercase tracking-wider bg-blue-500/10 px-3 py-1 rounded-full border border-blue-500/20">Tactical Squad Builder (11 + 5 Bench)</span>
+          <h2 class="text-2xl font-extrabold mt-1">Arrange Your Starting XI & Subs</h2>
+        </div>
+        <button onclick="startTournament()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-emerald-600/30 transition transform active:scale-95 flex items-center gap-2">
+          <span>🏆 Lock Squad & Enter Tournament</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1">
+        <!-- Pitch View (4-3-3 Formation) -->
+        <div class="lg:col-span-2 pitch-bg border-2 border-emerald-600/50 rounded-2xl p-6 shadow-2xl flex flex-col justify-between relative min-h-[500px]">
+          <!-- Pitch Markings -->
+          <div class="absolute inset-x-0 top-1/2 h-0.5 bg-white/20"></div>
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 border-2 border-white/20 rounded-full"></div>
+
+          <!-- Forwards -->
+          <div class="flex justify-around relative z-10">
+            ${renderPitchSlot('LW', myFormation['LW'])}
+            ${renderPitchSlot('ST', myFormation['ST'])}
+            ${renderPitchSlot('RW', myFormation['RW'])}
+          </div>
+
+          <!-- Midfielders -->
+          <div class="flex justify-around relative z-10">
+            ${renderPitchSlot('CM1', myFormation['CM1'])}
+            ${renderPitchSlot('CAM', myFormation['CAM'])}
+            ${renderPitchSlot('CM2', myFormation['CM2'])}
+          </div>
+
+          <!-- Defenders -->
+          <div class="flex justify-around relative z-10">
+            ${renderPitchSlot('LB', myFormation['LB'])}
+            ${renderPitchSlot('CB1', myFormation['CB1'])}
+            {renderPitchSlot('CB2', myFormation['CB2'])}
+            ${renderPitchSlot('RB', myFormation['RB'])}
+          </div>
+
+          <!-- Goalkeeper -->
+          <div class="flex justify-around relative z-10">
+            ${renderPitchSlot('GK', myFormation['GK'])}
+          </div>
+        </div>
+
+        <!-- Bench / Unassigned Pool -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
+          <h3 class="font-bold text-sm uppercase text-slate-400 mb-3">Your Drafted Roster (${mySquad.length}/16)</h3>
+          <p class="text-xs text-slate-500 mb-3">Click a player to assign to position slots.</p>
+          <div class="space-y-2 overflow-y-auto flex-1 max-h-[440px]">
+            ${mySquad.length === 0 ? '<p class="text-sm text-slate-500 text-center py-8">No players drafted.</p>' : ''}
+            {mySquad.map(p => `
+              <div onclick="selectPlayerForAssign(${p.id})" class="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 p-3 rounded-xl cursor-pointer transition flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-sm text-white">${p.name}</div>
+                  <div class="text-xs text-slate-400">${p.pos} • Rating: <span class="text-amber-400 font-bold">${p.rating}</span></div>
+                </div>
+                <span class="text-xs bg-blue-600/20 text-blue-400 px-2 py-1 rounded font-semibold">Assign</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+let selectedPlayerToAssign = null;
+function selectPlayerForAssign(id) {
+  const mySquad = gameState.squads[gameState.myId];
+  selectedPlayerToAssign = mySquad.find(p => p.id === id);
+  alert(`Selected ${selectedPlayerToAssign.name}. Now click on any position slot on the pitch to place them!`);
+}
+
+function renderPitchSlot(posName, player) {
+  return `
+    <div onclick="assignToSlot('${posName}')" class="cursor-pointer bg-slate-950/80 hover:bg-slate-900 border-2 ${player ? 'border-amber-500/80' : 'border-dashed border-white/40'} rounded-xl p-3 text-center w-28 md:w-32 shadow-lg transition transform active:scale-95">
+      <div class="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">${posName}</div>
+      <div class="font-bold text-xs md:text-sm text-white truncate mt-1">${player ? player.name.split(' ')[0] : 'Empty'}</div>
+      <div class="text-[11px] text-amber-400 font-extrabold mt-0.5">${player ? '★ ' + player.rating : 'Click to Set'}</div>
+    </div>
+  `;
+}
+
+function assignToSlot(posName) {
+  if (!selectedPlayerToAssign) {
+    alert("First select a player from your roster list on the right!");
+    return;
+  }
+  gameState.formations[gameState.myId][posName] = selectedPlayerToAssign;
+  selectedPlayerToAssign = null;
+  renderSquadBuilderScreen();
+}
+</script>
+
+<script>
+function startTournament() {
+  // Generate tournament fixtures based on online players in room
+  const activePlayers = [...gameState.players];
+  // If less than 8 players, pad with AI teams to make knockout bracket
+  while (activePlayers.length < 8) {
+    activePlayers.push({ id: 'ai_' + Math.random(), name: 'Bot Manager #' + (activePlayers.length + 1), team: 'Bot XI' });
+  }
+
+  // Shuffle for bracket
+  const shuffled = activePlayers.sort(() => 0.5 - Math.random());
+  
+  gameState.bracket = [
+    { round: "Quarterfinals", matches: [
+      { team1: shuffled[0], team2: shuffled[1], score1: null, score2: null, winner: null },
+      { team1: shuffled[2], team2: shuffled[3], score1: null, score2: null, winner: null },
+      { team1: shuffled[4], team2: shuffled[5], score1: null, score2: null, winner: null },
+      { team1: shuffled[6], team2: shuffled[7], score1: null, score2: null, winner: null }
+    ]},
+    { round: "Semifinals", matches: [
+      { team1: null, team2: null, score1: null, score2: null, winner: null },
+      { team1: null, team2: null, score1: null, score2: null, winner: null }
+    ]},
+    { round: "Final", matches: [
+      { team1: null, team2: null, score1: null, score2: null, winner: null }
+    ]}
+  ];
+
+  renderBracketScreen();
+}
+
+function renderBracketScreen() {
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="flex-1 flex flex-col max-w-5xl mx-auto w-full py-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl mb-6 flex justify-between items-center">
+        <div>
+          <span class="text-xs font-bold text-amber-400 uppercase tracking-wider bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">Tournament Bracket</span>
+          <h2 class="text-2xl font-extrabold mt-1">Knockout Stage</h2>
+        </div>
+        <button onclick="simulateNextMatch()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-blue-600/30 transition transform active:scale-95 flex items-center gap-2">
+          <span>⚡ Simulate Next Clash</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-1">
+        ${gameState.bracket.map((roundObj, rIdx) => `
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col">
+            <h3 class="font-extrabold text-sm uppercase text-amber-400 mb-4 text-center tracking-wider">${roundObj.round}</h3>
+            <div class="space-y-4 flex-1 flex flex-col justify-around">
+              ${roundObj.matches.map((m, mIdx) => `
+                <div class="bg-slate-800/80 border border-slate-700 p-3.5 rounded-xl">
+                  <div class="flex justify-between items-center text-sm font-bold mb-2">
+                    <span class="${m.winner === m.team1?.id ? 'text-emerald-400' : 'text-white'}">${m.team1 ? m.team1.team : 'TBD'}</span>
+                    <span class="bg-slate-900 px-2 py-0.5 rounded text-amber-400">${m.score1 !== null ? m.score1 : '-'}</span>
+                  </div>
+                  <div class="flex justify-between items-center text-sm font-bold">
+                    <span class="${m.winner === m.team2?.id ? 'text-emerald-400' : 'text-white'}">${m.team2 ? m.team2.team : 'TBD'}</span>
+                    <span class="bg-slate-900 px-2 py-0.5 rounded text-amber-400">${m.score2 !== null ? m.score2 : '-'}</span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+}
+</script>
+
+<script>
+function simulateNextMatch() {
+  // Find first unplayed match in bracket
+  let targetMatch = null;
+  let targetRoundIdx = -1;
+  let targetMatchIdx = -1;
+
+  for (let r = 0; r < gameState.bracket.length; r++) {
+    for (let m = 0; m < gameState.bracket[r].matches.length; m++) {
+      const match = gameState.bracket[r].matches[m];
+      if (match.team1 && match.team2 && match.winner === null) {
+        targetMatch = match;
+        targetRoundIdx = r;
+        targetMatchIdx = m;
+        break;
+      }
+    }
+    if (targetMatch) break;
+  }
+
+  if (!targetMatch) {
+    // Check if tournament is over
+    const finalMatch = gameState.bracket[2].matches[0];
+    if (finalMatch.winner) {
+      const winnerObj = finalMatch.winner === finalMatch.team1.id ? finalMatch.team1 : finalMatch.team2;
+      alert(`🏆 TOURNAMENT CHAMPION: ${winnerObj.team} (${winnerObj.name})!`);
+      return;
+    }
+    alert("Please wait or setup previous matches.");
+    return;
+  }
+
+  // Run Match simulation with rich commentator events
+  gameState.currentMatch = targetMatch;
+  gameState.matchLog = [];
+
+  const team1Squad = gameState.squads[targetMatch.team1.id] || [];
+  const team2Squad = gameState.squads[targetMatch.team2.id] || [];
+  
+  const rating1 = team1Squad.length ? team1Squad.reduce((acc, p) => acc + p.rating, 0) / team1Squad.length : 85;
+  const rating2 = team2Squad.length ? team2Squad.reduce((acc, p) => acc + p.rating, 0) / team2Squad.length : 85;
+
+  let score1 = 0;
+  let score2 = 0;
+
+  gameState.matchLog.push(`🎙️ WELCOME to this thrilling knockout clash between ${targetMatch.team1.team} and ${targetMatch.team2.team}!`);
+  gameState.matchLog.push(`⏱️ 00' - Referee blows the whistle, and we are underway!`);
+
+  // Simulate minutes
+  [14, 28, 41, 56, 72, 88].forEach(min => {
+    const rand = Math.random() * 100;
+    const advantage = (rating1 - rating2) * 0.8;
+    
+    if (rand + advantage > 58) {
+      score1++;
+      const scorer = team1Squad.length ? team1Squad[Math.floor(Math.random() * team1Squad.length)].name : "Star Striker";
+      gameState.matchLog.push(`⏱️ ${min}' - GOAL! Magnificent strike by ${scorer} for ${targetMatch.team1.team}! (${score1}-${score2})`);
+    } else if (rand - advantage < 38) {
+      score2++;
+      const scorer = team2Squad.length ? team2Squad[Math.floor(Math.random() * team2Squad.length)].name : "Rival Forward";
+      gameState.matchLog.push(`⏱️ ${min}' - GOAL! Stunning counter-attack finish by ${scorer} for ${targetMatch.team2.team}! (${score1}-${score2})`);
+    } else if (rand > 80) {
+      gameState.matchLog.push(`⏱️ ${min}' - DRAMA! Hard tackle in the box... Yellow card shown to the defender.`);
+    } else if (rand < 20) {
+      gameState.matchLog.push(`⏱️ ${min}' - Incredible save by the goalkeeper! Score remains level.`);
+    }
+  });
+
+  // Extra time / penalty tiebreaker if draw
+  if (score1 === score2) {
+    if (Math.random() > 0.5) {
+      score1++;
+      gameState.matchLog.push(`⏱️ 90+4' - LATE DRAMA! Penalty awarded in injury time! Converted successfully! (${score1}-${score2})`);
+    } else {
+      score2++;
+      gameState.matchLog.push(`⏱️ 90+4' - EXTRA TIME WINNER! A header at the death! (${score1}-${score2})`);
+    }
+  }
+
+  targetMatch.score1 = score1;
+  targetMatch.score2 = score2;
+  targetMatch.winner = score1 > score2 ? targetMatch.team1.id : targetMatch.team2.id;
+  
+  gameState.matchLog.push(`🏁 FULL TIME: ${targetMatch.team1.team} ${score1} - ${score2} ${targetMatch.team2.team}`);
+
+  // Advance winner to next round if applicable
+  if (targetRoundIdx === 0) {
+    // Quarters -> Semis
+    const semiMatchIdx = Math.floor(targetMatchIdx / 2);
+    const isFirstSlot = targetMatchIdx % 2 === 0;
+    const winnerObj = targetMatch.winner === targetMatch.team1.id ? targetMatch.team1 : targetMatch.team2;
+    if (isFirstSlot) {
+      gameState.bracket[1].matches[semiMatchIdx].team1 = winnerObj;
+    } else {
+      gameState.bracket[1].matches[semiMatchIdx].team2 = winnerObj;
+    }
+  } else if (targetRoundIdx === 1) {
+    // Semis -> Final
+    const finalMatch = gameState.bracket[2].matches[0];
+    const isFirstSlot = targetMatchIdx === 0;
+    const winnerObj = targetMatch.winner === targetMatch.team1.id ? targetMatch.team1 : targetMatch.team2;
+    if (isFirstSlot) {
+      finalMatch.team1 = winnerObj;
+    } else {
+      finalMatch.team2 = winnerObj;
+    }
+  }
+
+  renderMatchSimulationScreen();
+}
+
+function renderMatchSimulationScreen() {
+  const m = gameState.currentMatch;
+  const app = document.getElementById('app');
+  app.innerHTML = `
+    <div class="flex-1 flex flex-col max-w-4xl mx-auto w-full py-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl mb-6 text-center">
+        <span class="text-xs font-bold text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">Live Match Simulation</span>
+        <div class="flex justify-around items-center my-6">
+          <div class="text-center w-1/3">
+            <h2 class="text-xl md:text-3xl font-black text-white">${m.team1.team}</h2>
+            <div class="text-xs text-slate-400 mt-1">${m.team1.name}</div>
+          </div>
+          <div class="text-3xl md:text-5xl font-black text-amber-400 bg-slate-950 px-6 py-3 rounded-2xl border border-slate-800 shadow-inner">
+            ${m.score1} - ${m.score2}
+          </div>
+          <div class="text-center w-1/3">
+            <h2 class="text-xl md:text-3xl font-black text-white">${m.team2.team}</h2>
+            <div class="text-xs text-slate-400 mt-1">${m.team2.name}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Commentator Live Log -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl flex-1 mb-6 flex flex-col">
+        <h3 class="font-bold text-sm uppercase text-slate-400 mb-4 flex items-center gap-2">
+          <span>🎙️</span> Commentator Match Summary & Key Events
+        </h3>
+        <div class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-4 space-y-3 font-mono text-xs md:text-sm text-emerald-400 flex-1 max-h-[300px] overflow-y-auto">
+          ${gameState.matchLog.map(log => `<div>${log}</div>`).join('')}
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="renderBracketScreen()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-lg shadow-emerald-600/30 transition transform active:scale-95">
+          Continue to Tournament Bracket →
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// Initial render
+window.onload = function() {
+  renderLobby();
+};
+</script>
+</body>
+</html>
