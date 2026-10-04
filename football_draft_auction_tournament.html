@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ultimate Football Draft & Tournament Clash</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Teko:wght@600;700&display=swap" rel="stylesheet">
+    
+    <!-- Firebase JS SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.FirebaseModule = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, getFirestore, doc, setDoc, getDoc, onSnapshot };
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        display: ['Teko', 'sans-serif'],
+                    },
+                    colors: {
+                        pitch: '#123524',
+                        pitchDark: '#0b2016',
+                        accent: '#10b981',
+                        gold: '#f59e0b',
+                        cardBg: '#1e293b',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+        .pitch-bg {
+            background-color: #113823;
+            background-image: 
+                linear-gradient(to bottom, rgba(255,255,255,0.05) 50%, transparent 50%),
+                radial-gradient(circle at center, rgba(255,255,255,0.08) 0%, transparent 70%);
+            background-size: 100% 40px, 100% 100%;
+        }
+
+        .gold-card {
+            background: linear-gradient(135deg, #78350f 0%, #b45309 40%, #f59e0b 100%);
+            box-shadow: 0 10px 25px -5px rgba(245, 158, 11, 0.3);
+        }
+
+        .icon-card {
+            background: linear-gradient(135deg, #4c1d95 0%, #6d28d9 40%, #a855f7 100%);
+            box-shadow: 0 10px 25px -5px rgba(168, 85, 247, 0.3);
+        }
+
+        .norm-card {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            border: 1px solid #334155;
+        }
+
+        .pulse-gold {
+            animation: pulse-gold-anim 2s infinite;
+        }
+        @keyframes pulse-gold-anim {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans selection:bg-emerald-500 selection:text-white">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-50 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="switchTab('lobby')">
+                <div class="bg-gradient-to-tr from-emerald-600 to-teal-400 p-2.5 rounded-xl text-white shadow-lg shadow-emerald-900/40">
+                    <i class="fa-solid font-black fa-trophy text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-display text-2xl leading-none font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-emerald-400">
+                        FOOTBALL DRAFT CLASH
+                    </h1>
+                    <p class="text-xs text-slate-400">16-Player Auction & Tournament Engine</p>
+                </div>
+            </div>
+
+            <!-- Active Room & User Status Header Pill -->
+            <div id="room-status-bar" class="hidden md:flex items-center gap-3 bg-slate-800/80 border border-slate-700/60 rounded-full px-4 py-1.5 text-xs">
+                <span class="flex items-center gap-1.5 text-emerald-400 font-semibold">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    Room: <span id="nav-room-id" class="text-white uppercase font-mono tracking-wider">ROOM-101</span>
+                </span>
+                <span class="text-slate-600">|</span>
+                <span class="text-slate-300">Manager: <strong id="nav-manager-name" class="text-amber-400">Manager 1</strong></span>
+                <span class="text-slate-600">|</span>
+                <button onclick="copyRoomLink()" class="hover:text-emerald-400 text-slate-400 transition" title="Copy Invite Link">
+                    <i class="fa-regular fa-copy"></i> Invite Link
+                </button>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <nav id="nav-tabs" class="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button onclick="switchTab('lobby')" id="tab-lobby" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-white bg-slate-800">
+                    <i class="fa-solid fa-users"></i> Room Lobby
+                </button>
+                <button onclick="switchTab('auction')" id="tab-auction" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-gavel"></i> Live Auction
+                </button>
+                <button onclick="switchTab('squad')" id="tab-squad" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-shirt"></i> Pitch & Squad
+                </button>
+                <button onclick="switchTab('tournament')" id="tab-tournament" class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-sitemap"></i> Tournament
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Dynamic Content Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 space-y-6">
+
+        <!-- 1. LOBBY SECTION -->
+        <section id="sec-lobby" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Create or Join Card -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
+                                <i class="fa-solid fa-door-open text-xl"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-xl font-bold">Room Manager</h2>
+                                <p class="text-xs text-slate-400">Host or Join a custom draft room</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 pt-2">
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1 font-medium">Your Manager Name</label>
+                                <input type="text" id="input-manager-name" value="Manager 1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs text-slate-400 mb-1 font-medium">Room Code</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="input-room-code" placeholder="e.g. ROOM-88" class="flex-1 uppercase bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-sm font-mono focus:outline-none focus:border-emerald-500 transition">
+                                    <button onclick="joinOrCreateRoom()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-4 rounded-xl text-sm transition">
+                                        Join / Set
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-6 pt-4 border-t border-slate-800 space-y-3">
+                        <label class="block text-xs text-slate-400 font-medium">Draft Settings</label>
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                                <span class="text-slate-500 block">Starting Budget</span>
+                                <span class="text-emerald-400 font-bold">€1,000M</span>
+                            </div>
+                            <div class="bg-slate-950 border border-slate-800 rounded-lg p-2.5">
+                                <span class="text-slate-500 block">Squad Roster</span>
+                                <span class="text-amber-400 font-bold">16 Players (11+5)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Room Managers Roster & Active User Selector -->
+                <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                        <div>
+                            <h2 class="text-xl font-bold">Room Managers & Teams (8 Max)</h2>
+                            <p class="text-xs text-slate-400">Select which team slot you want to control or add AI managers</p>
+                        </div>
+                        <button onclick="fillBots()" class="bg-slate-800 hover:bg-slate-700 text-xs font-semibold px-3 py-2 rounded-xl text-slate-300 transition flex items-center gap-1.5 border border-slate-700">
+                            <i class="fa-solid fa-robot"></i> Fill AI Managers
+                        </button>
+                    </div>
+
+                    <!-- 8 Slots Grid -->
+                    <div id="managers-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Dynamically filled in JS -->
+                    </div>
+
+                    <div class="pt-2 flex justify-end">
+                        <button onclick="switchTab('auction')" class="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-bold px-6 py-3 rounded-xl shadow-lg shadow-emerald-950 text-sm flex items-center justify-center gap-2 transition">
+                            Enter Live Auction Phase <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. LIVE AUCTION SECTION -->
+        <section id="sec-auction" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Auction Spot Stage -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Current Player Card Stage -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
+                        <div class="absolute -right-16 -top-16 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+                        <!-- Top Tier Tag & Auction Counter -->
+                        <div class="flex justify-between items-center mb-4">
+                            <span id="auc-legacy-tag" class="text-xs font-bold px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest">
+                                GOAT Iconic Legacy
+                            </span>
+                            <div class="text-xs font-mono text-slate-400 flex items-center gap-2">
+                                <i class="fa-solid fa-list-ol text-emerald-400"></i> Player <span id="auc-player-num" class="text-white font-bold">1</span> / <span id="auc-player-total">128</span>
+                            </div>
+                        </div>
+
+                        <!-- Player Presentation Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                            <!-- FUT Style Card Graphic -->
+                            <div id="auc-card-graphic" class="gold-card text-slate-950 p-5 rounded-2xl flex flex-col justify-between h-72 border-2 border-amber-300/40 relative shadow-2xl transition transform hover:scale-105">
+                                <div class="flex justify-between items-start font-display">
+                                    <div>
+                                        <div id="auc-ovr" class="text-5xl font-bold leading-none">98</div>
+                                        <div id="auc-pos" class="text-xl font-bold tracking-wider">RW</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <i class="fa-solid fa-star text-amber-200"></i>
+                                    </div>
+                                </div>
+                                <div class="text-center my-auto">
+                                    <div id="auc-name" class="font-display text-3xl font-bold leading-tight uppercase tracking-wider text-white drop-shadow-md">
+                                        Lionel Messi
+                                    </div>
+                                    <div id="auc-nation" class="text-xs font-bold text-amber-100 uppercase tracking-widest mt-1">Argentina</div>
+                                </div>
+                                <div class="grid grid-cols-3 gap-1 text-center font-bold text-xs bg-black/20 backdrop-blur-sm p-2 rounded-xl text-white">
+                                    <div><span class="block text-[10px] text-amber-200 font-normal">PAC</span><span id="auc-pac">94</span></div>
+                                    <div><span class="block text-[10px] text-amber-200 font-normal">SHO</span><span id="auc-sho">96</span></div>
+                                    <div><span class="block text-[10px] text-amber-200 font-normal">PAS</span><span id="auc-pas">98</span></div>
+                                    <div><span class="block text-[10px] text-amber-200 font-normal">DRI</span><span id="auc-dri">99</span></div>
+                                    <div><span class="block text-[10px] text-amber-200 font-normal">DEF</span><span id="auc-def">40</span></div>
+                                    <div><span class="block text-[10px] text-amber-200 font-normal">PHY</span><span id="auc-phy">75</span></div>
+                                </div>
+                            </div>
+
+                            <!-- Bid Control & Status Area -->
+                            <div class="md:col-span-2 space-y-5">
+                                <div>
+                                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Current Highest Bid</span>
+                                    <div class="flex items-baseline gap-3">
+                                        <div id="auc-current-price" class="text-4xl lg:text-5xl font-extrabold text-emerald-400 font-mono">€120M</div>
+                                        <span id="auc-highest-bidder" class="text-sm font-semibold text-amber-400 bg-amber-400/10 px-2.5 py-1 rounded-lg border border-amber-400/20">
+                                            Base Price
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Action Bid Buttons -->
+                                <div class="space-y-3">
+                                    <span class="text-xs font-medium text-slate-400">Bid as <strong id="auc-acting-manager" class="text-white">Manager 1</strong>:</span>
+                                    <div class="grid grid-cols-3 gap-2">
+                                        <button onclick="placeBid(10)" class="bg-slate-800 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl border border-slate-700 hover:border-emerald-500 transition text-sm flex flex-col items-center">
+                                            <span>+ €10M</span>
+                                        </button>
+                                        <button onclick="placeBid(25)" class="bg-slate-800 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl border border-slate-700 hover:border-emerald-500 transition text-sm flex flex-col items-center">
+                                            <span>+ €25M</span>
+                                        </button>
+                                        <button onclick="placeBid(50)" class="bg-slate-800 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl border border-slate-700 hover:border-emerald-500 transition text-sm flex flex-col items-center">
+                                            <span>+ €50M</span>
+                                        </button>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="triggerAiBids()" class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-semibold py-2.5 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                                            <i class="fa-solid fa-robot"></i> Simulate Rivals Bids
+                                        </button>
+                                        <button onclick="sellCurrentPlayer()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2">
+                                            <i class="fa-solid fa-check"></i> Sell / Pass to Next
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Auction Live Log Feed -->
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                        <div class="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">
+                            <i class="fa-solid fa-stream text-emerald-400"></i> Bidding Activity Log
+                        </div>
+                        <div id="auc-log" class="bg-slate-950 rounded-xl p-3 h-36 overflow-y-auto font-mono text-xs space-y-1.5 text-slate-300 border border-slate-800/80">
+                            <div class="text-emerald-400">> Auction room initialized. Ready for bids!</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Sidebar: Manager Budget & Squad Progress -->
+                <div class="space-y-4">
+                    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-4">
+                        <h3 class="font-bold text-base border-b border-slate-800 pb-3 flex justify-between items-center">
+                            <span>Managers Budget Status</span>
+                            <span class="text-xs font-normal text-slate-400">Target: 16 Players</span>
+                        </h3>
+                        <div id="auc-managers-status" class="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+                            <!-- Dynamically populated in JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. SQUAD & PITCH TACTICS SECTION -->
+        <section id="sec-squad" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Tactical Pitch Display -->
+                <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+                    <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-800 pb-3">
+                        <div>
+                            <h2 class="text-xl font-bold flex items-center gap-2">
+                                <span>Tactical Pitch Lineup</span>
+                                <span id="pitch-manager-badge" class="text-xs bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/30">Manager 1</span>
+                            </h2>
+                            <p class="text-xs text-slate-400">Assign your 11 Starters onto the pitch positions</p>
+                        </div>
+                        <!-- Formation Select -->
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-400 font-medium">Formation:</span>
+                            <select id="formation-select" onchange="changeFormation()" class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-emerald-400 font-bold focus:outline-none">
+                                <option value="4-3-3">4-3-3 Standard</option>
+                                <option value="4-2-3-1">4-2-3-1 Wide</option>
+                                <option value="4-4-2">4-4-2 Classic</option>
+                                <option value="3-5-2">3-5-2 Attack</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Soccer Pitch Graphics -->
+                    <div class="pitch-bg border-4 border-slate-800/80 rounded-2xl h-[480px] relative overflow-hidden flex flex-col justify-between p-4 shadow-inner">
+                        <!-- Pitch Line markings -->
+                        <div class="absolute inset-x-0 top-1/2 h-0.5 bg-white/20"></div>
+                        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 border-2 border-white/20 rounded-full"></div>
+                        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 border-b-2 border-x-2 border-white/20 rounded-b-xl"></div>
+                        <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-20 border-t-2 border-x-2 border-white/20 rounded-t-xl"></div>
+
+                        <!-- Pitch Rows -->
+                        <!-- Attackers Row -->
+                        <div class="row-fw flex justify-around items-center z-10 my-auto" id="pitch-row-fw"></div>
+                        <!-- Midfielders Row -->
+                        <div class="row-mf flex justify-around items-center z-10 my-auto" id="pitch-row-mf"></div>
+                        <!-- Defenders Row -->
+                        <div class="row-df flex justify-around items-center z-10 my-auto" id="pitch-row-df"></div>
+                        <!-- Goalkeeper Row -->
+                        <div class="row-gk flex justify-center items-center z-10 my-auto" id="pitch-row-gk"></div>
+                    </div>
+
+                    <!-- Team Rating Summary Bar -->
+                    <div class="grid grid-cols-4 gap-2 text-center text-xs">
+                        <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                            <span class="text-slate-500 block">Overall OVR</span>
+                            <span id="rate-ovr" class="text-emerald-400 font-extrabold text-base">88</span>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                            <span class="text-slate-500 block">Attack</span>
+                            <span id="rate-att" class="text-amber-400 font-extrabold text-base">90</span>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                            <span class="text-slate-500 block">Midfield</span>
+                            <span id="rate-mid" class="text-sky-400 font-extrabold text-base">87</span>
+                        </div>
+                        <div class="bg-slate-950 border border-slate-800 p-2 rounded-xl">
+                            <span class="text-slate-500 block">Defense</span>
+                            <span id="rate-def" class="text-indigo-400 font-extrabold text-base">86</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Squad Bench & Roster List -->
+                <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl flex flex-col justify-between space-y-4">
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                            <h3 class="font-bold text-base flex items-center gap-2">
+                                <i class="fa-solid fa-users-line text-emerald-400"></i> Purchased Roster (16 Max)
+                            </h3>
+                            <button onclick="autoFillLineup()" class="text-xs bg-slate-800 hover:bg-slate-700 border border-slate-700 px-2.5 py-1 rounded-lg text-slate-300 transition">
+                                Auto Best XI
+                            </button>
+                        </div>
+
+                        <!-- Player List with Position Selector -->
+                        <div id="squad-list" class="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                            <!-- Populated in JS -->
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-800 flex justify-between items-center">
+                        <div class="text-xs text-slate-400">
+                            Substitutes (5 Bench Slots): <strong id="subs-count-text" class="text-white">0/5</strong>
+                        </div>
+                        <button onclick="switchTab('tournament')" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-2">
+                            Go to Knockout Tournament <i class="fa-solid fa-trophy"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 4. TOURNAMENT & CLASH SIMULATOR SECTION -->
+        <section id="sec-tournament" class="hidden space-y-6">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+                <!-- Tournament Top Bar -->
+                <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-trophy text-amber-400"></i> Knockout Champions Tournament
+                        </h2>
+                        <p class="text-xs text-slate-400">8 Teams • Quarterfinals ➔ Semifinals ➔ Championship Final</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="generateBracket()" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2">
+                            <i class="fa-solid fa-rotate"></i> Reset Bracket
+                        </button>
+                        <button onclick="simulateFullTournament()" class="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold px-5 py-2 rounded-xl text-xs shadow-lg transition flex items-center gap-2">
+                            <i class="fa-solid fa-bolt"></i> Sim Entire Tournament
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Knockout Bracket Visual Layout -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center py-4 relative overflow-x-auto">
+                    <!-- Quarterfinals Column -->
+                    <div class="space-y-4">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest text-center border-b border-slate-800 pb-2">Quarterfinals</div>
+                        <div id="bracket-qf" class="space-y-4">
+                            <!-- 4 Matches -->
+                        </div>
+                    </div>
+
+                    <!-- Semifinals Column -->
+                    <div class="space-y-8">
+                        <div class="text-xs font-bold text-amber-400 uppercase tracking-widest text-center border-b border-slate-800 pb-2">Semifinals</div>
+                        <div id="bracket-sf" class="space-y-8">
+                            <!-- 2 Matches -->
+                        </div>
+                    </div>
+
+                    <!-- Final Column -->
+                    <div class="space-y-4">
+                        <div class="text-xs font-bold text-emerald-400 uppercase tracking-widest text-center border-b border-slate-800 pb-2">Grand Final</div>
+                        <div id="bracket-final" class="space-y-4">
+                            <!-- 1 Match -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LIVE COMMENTATOR MATCH SIMULATION MODAL / DISPLAY -->
+            <div id="sim-modal" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-red-500/10 text-red-400 rounded-xl border border-red-500/20">
+                            <i class="fa-solid fa-tower-broadcast animate-pulse"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold" id="sim-title">Match Simulation Stadium</h3>
+                            <p class="text-xs text-slate-400">Live minute-by-minute commentator feed & events</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button id="sim-speed-btn" onclick="toggleSimSpeed()" class="bg-slate-800 text-xs px-3 py-1.5 rounded-lg border border-slate-700 text-slate-300">Speed: Normal</button>
+                        <button onclick="instantFinishSim()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-3 py-1.5 rounded-lg transition">Instant Result</button>
+                    </div>
+                </div>
+
+                <!-- Live Score Board -->
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-5 flex justify-between items-center text-center">
+                    <div class="flex-1">
+                        <div id="sim-team1-name" class="font-extrabold text-lg text-emerald-400">Team 1</div>
+                        <div id="sim-team1-ovr" class="text-xs text-slate-500">OVR: 88</div>
+                    </div>
+                    <div class="px-6 space-y-1">
+                        <div class="text-xs font-mono font-bold text-amber-400 bg-amber-400/10 px-3 py-1 rounded-full border border-amber-400/20 inline-block" id="sim-clock">
+                            00'
+                        </div>
+                        <div class="text-4xl font-extrabold font-mono tracking-wider text-white" id="sim-score">
+                            0 - 0
+                        </div>
+                    </div>
+                    <div class="flex-1">
+                        <div id="sim-team2-name" class="font-extrabold text-lg text-sky-400">Team 2</div>
+                        <div id="sim-team2-ovr" class="text-xs text-slate-500">OVR: 86</div>
+                    </div>
+                </div>
+
+                <!-- Commentator Box Log -->
+                <div class="bg-black/60 border border-slate-800 rounded-xl p-4 h-56 overflow-y-auto space-y-2 font-sans text-xs" id="sim-commentary-box">
+                    <div class="text-slate-500 italic">> Referee blows the whistle! Match is underway...</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /* -------------------------------------------------------------------------- */
+        /* GLOBAL DATA & PLAYER DATABASE                                              */
+        /* -------------------------------------------------------------------------- */
+        const MASTER_PLAYERS = [
+            // GOAT Icons
+            { id: 1, name: "Lionel Messi (Prime)", rating: 98, pos: "RW", basePrice: 120, pac: 94, sho: 96, pas: 98, dri: 99, def: 40, phy: 75, tier: "GOAT Legend" },
+            { id: 2, name: "Cristiano Ronaldo (Prime)", rating: 97, pos: "ST", basePrice: 115, pac: 96, sho: 98, pas: 88, dri: 93, def: 42, phy: 89, tier: "GOAT Legend" },
+            { id: 3, name: "Pelé (Icon)", rating: 98, pos: "ST", basePrice: 120, pac: 95, sho: 96, pas: 93, dri: 97, def: 38, phy: 78, tier: "GOAT Legend" },
+            { id: 4, name: "Diego Maradona (Icon)", rating: 97, pos: "CAM", basePrice: 110, pac: 92, sho: 93, pas: 97, dri: 98, def: 40, phy: 76, tier: "GOAT Legend" },
+            { id: 5, name: "Zinedine Zidane (Icon)", rating: 96, pos: "CM1", basePrice: 100, pac: 85, sho: 90, pas: 96, dri: 95, def: 75, phy: 86, tier: "GOAT Legend" },
+            { id: 6, name: "Ronaldo Nazário (Icon)", rating: 96, pos: "ST", basePrice: 105, pac: 97, sho: 95, pas: 81, dri: 95, def: 35, phy: 85, tier: "GOAT Legend" },
+            { id: 7, name: "Paolo Maldini (Icon)", rating: 96, pos: "CB1", basePrice: 95, pac: 86, sho: 55, pas: 78, dri: 72, def: 98, phy: 88, tier: "GOAT Legend" },
+            { id: 8, name: "Ronaldinho (Icon)", rating: 95, pos: "LW", basePrice: 95, pac: 92, sho: 90, pas: 92, dri: 97, def: 38, phy: 79, tier: "GOAT Legend" },
+            
+            // Current Stars
+            { id: 9, name: "Kylian Mbappé", rating: 93, pos: "LW", basePrice: 95, pac: 97, sho: 90, pas: 82, dri: 93, def: 36, phy: 78, tier: "Current Superstar" },
+            { id: 10, name: "Erling Haaland", rating: 92, pos: "ST", basePrice: 90, pac: 89, sho: 94, pas: 68, dri: 80, def: 45, phy: 88, tier: "Current Superstar" },
+            { id: 11, name: "Kevin De Bruyne", rating: 92, pos: "CAM", basePrice: 85, pac: 75, sho: 88, pas: 94, dri: 87, def: 65, phy: 77, tier: "Current Superstar" },
+            { id: 12, name: "Jude Bellingham", rating: 91, pos: "CM2", basePrice: 85, pac: 82, sho: 86, pas: 88, dri: 89, def: 78, phy: 84, tier: "Current Superstar" },
+            { id: 13, name: "Virgil van Dijk", rating: 90, pos: "CB2", basePrice: 75, pac: 78, sho: 60, pas: 71, dri: 72, def: 92, phy: 86, tier: "Current Superstar" },
+            { id: 14, name: "Mohamed Salah", rating: 90, pos: "RW", basePrice: 75, pac: 90, sho: 88, pas: 83, dri: 89, def: 45, phy: 76, tier: "Current Superstar" },
+            { id: 15, name: "Thibaut Courtois", rating: 90, pos: "GK", basePrice: 70, pac: 50, sho: 20, pas: 65, dri: 50, def: 90, phy: 85, tier: "Current Superstar" },
+            { id: 16, name: "Vinícius Júnior", rating: 91, pos: "LW", basePrice: 85, pac: 96, sho: 84, pas: 81, dri: 92, def: 32, phy: 68, tier: "Current Superstar" },
+            
+            // Mid-Tier & Solid Foundation
+            { id: 17, name: "Luka Modrić", rating: 88, pos: "CM1", basePrice: 50, pac: 72, sho: 76, pas: 89, dri: 88, def: 72, phy: 66, tier: "Elite Veteran" },
+            { id: 18, name: "Sergio Ramos (Prime)", rating: 90, pos: "CB1", basePrice: 70, pac: 80, sho: 70, pas: 75, dri: 72, def: 92, phy: 89, tier: "Iconic Legend" },
+            { id: 19, name: "Alphonso Davies", rating: 85, pos: "LB", basePrice: 45, pac: 95, sho: 68, pas: 77, dri: 84, def: 76, phy: 77, tier: "Current Star" },
+            { id: 20, name: "Achraf Hakimi", rating: 85, pos: "RB", basePrice: 45, pac: 92, sho: 75, pas: 79, dri: 81, def: 76, phy: 78, tier: "Current Star" },
+            { id: 21, name: "Manuel Neuer (Prime)", rating: 92, pos: "GK", basePrice: 75, pac: 60, sho: 30, pas: 85, dri: 70, def: 92, phy: 88, tier: "GOAT Legend" },
+            { id: 22, name: "N'Golo Kanté (Prime)", rating: 90, pos: "CM2", basePrice: 65, pac: 81, sho: 66, pas: 77, dri: 81, def: 90, phy: 85, tier: "Elite Veteran" },
+            { id: 23, name: "Harry Kane", rating: 90, pos: "ST", basePrice: 70, pac: 70, sho: 92, pas: 84, dri: 82, def: 47, phy: 83, tier: "Current Superstar" },
+            { id: 24, name: "Trent Alexander-Arnold", rating: 86, pos: "RB", basePrice: 50, pac: 76, sho: 74, pas: 90, dri: 80, def: 73, phy: 70, tier: "Current Star" },
+            { id: 25, name: "Theo Hernández", rating: 86, pos: "LB", basePrice: 50, pac: 93, sho: 72, pas: 76, dri: 81, def: 79, phy: 84, tier: "Current Star" },
+            { id: 26, name: "Rodri", rating: 91, pos: "CM1", basePrice: 80, pac: 65, sho: 73, pas: 85, dri: 80, def: 87, phy: 85, tier: "Current Superstar" },
+            { id: 27, name: "Pedri", rating: 87, pos: "CAM", basePrice: 55, pac: 78, sho: 70, pas: 88, dri: 89, def: 68, phy: 64, tier: "Young Talent" },
+            { id: 28, name: "Rúben Dias", rating: 88, pos: "CB2", basePrice: 60, pac: 65, sho: 40, pas: 70, dri: 68, def: 89, phy: 87, tier: "Current Star" },
+            { id: 29, name: "Bukayo Saka", rating: 87, pos: "RW", basePrice: 60, pac: 86, sho: 81, pas: 82, dri: 87, def: 55, phy: 72, tier: "Young Talent" },
+            { id: 30, name: "Alisson Becker", rating: 89, pos: "GK", basePrice: 65, pac: 55, sho: 25, pas: 85, dri: 55, def: 89, phy: 84, tier: "Current Star" },
+            { id: 31, name: "Antoine Griezmann", rating: 88, pos: "CAM", basePrice: 55, pac: 80, sho: 87, pas: 86, dri: 87, def: 58, phy: 72, tier: "Elite Veteran" },
+            { id: 32, name: "Federico Valverde", rating: 88, pos: "CM2", basePrice: 65, pac: 88, sho: 82, pas: 83, dri: 84, def: 78, phy: 82, tier: "Current Star" }
+        ];
+
+        /* Default Formations mapping */
+        const FORMATIONS = {
+            "4-3-3": { fw: ["LW", "ST", "RW"], mf: ["CM1", "CAM", "CM2"], df: ["LB", "CB1", "CB2", "RB"], gk: ["GK"] },
+            "4-2-3-1": { fw: ["ST"], mf: ["LW", "CAM", "RW", "CM1", "CM2"], df: ["LB", "CB1", "CB2", "RB"], gk: ["GK"] },
+            "4-4-2": { fw: ["ST", "RW"], mf: ["LW", "CM1", "CM2", "CAM"], df: ["LB", "CB1", "CB2", "RB"], gk: ["GK"] },
+            "3-5-2": { fw: ["LW", "ST"], mf: ["LB", "CM1", "CAM", "CM2", "RB"], df: ["CB1", "CB2"], gk: ["GK"] }
+        };
+
+        /* -------------------------------------------------------------------------- */
+        /* APPLICATION STATE                                                          */
+        /* -------------------------------------------------------------------------- */
+        let state = {
+            roomId: "ROOM-101",
+            activeUserIndex: 0,
+            managers: [
+                { id: 0, name: "Manager 1", budget: 1000, squad: [], isAi: false },
+                { id: 1, name: "Rival AI 1", budget: 1000, squad: [], isAi: true },
+                { id: 2, name: "Rival AI 2", budget: 1000, squad: [], isAi: true },
+                { id: 3, name: "Rival AI 3", budget: 1000, squad: [], isAi: true },
+                { id: 4, name: "Rival AI 4", budget: 1000, squad: [], isAi: true },
+                { id: 5, name: "Rival AI 5", budget: 1000, squad: [], isAi: true },
+                { id: 6, name: "Rival AI 6", budget: 1000, squad: [], isAi: true },
+                { id: 7, name: "Rival AI 7", budget: 1000, squad: [], isAi: true }
+            ],
+            auction: {
+                playerIndex: 0,
+                currentPrice: 120,
+                highestBidderIndex: null,
+                logs: []
+            },
+            formation: "4-3-3",
+            lineupAssignments: {}, // pos -> playerId
+            tournament: {
+                qf: [],
+                sf: [],
+                final: []
+            }
+        };
+
+        // Firebase reference
+        let db = null;
+        let appId = typeof __app_id !== 'undefined' ? __app_id : 'football-draft-app';
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            initFirebase();
+            renderLobbyManagers();
+            updateAuctionDisplay();
+            renderPitch();
+            generateBracket();
+
+            // Parse URL parameters for room joining
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('room')) {
+                state.roomId = urlParams.get('room').toUpperCase();
+                document.getElementById('input-room-code').value = state.roomId;
+                document.getElementById('nav-room-id').innerText = state.roomId;
+            }
+        });
+
+        async function initFirebase() {
+            try {
+                if (typeof __firebase_config !== 'undefined' && window.FirebaseModule) {
+                    const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, getFirestore } = window.FirebaseModule;
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    const auth = getAuth(app);
+                    db = getFirestore(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    console.log("Firebase initialized successfully.");
+                    listenRoomState();
+                }
+            } catch (e) {
+                console.warn("Firestore running in offline/memory mode:", e);
+            }
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* NAVIGATION & TABS                                                          */
+        /* -------------------------------------------------------------------------- */
+        function switchTab(tab) {
+            ['lobby', 'auction', 'squad', 'tournament'].forEach(t => {
+                const sec = document.getElementById(`sec-${t}`);
+                const btn = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    sec.classList.remove('hidden');
+                    btn.classList.add('bg-slate-800', 'text-white');
+                    btn.classList.remove('text-slate-400');
+                } else {
+                    sec.classList.add('hidden');
+                    btn.classList.remove('bg-slate-800', 'text-white');
+                    btn.classList.add('text-slate-400');
+                }
+            });
+
+            if (tab === 'squad') renderSquadList();
+            if (tab === 'tournament') renderBracketUI();
+        }
+
+        function copyRoomLink() {
+            const url = `${window.location.origin}${window.location.pathname}?room=${state.roomId}`;
+            navigator.clipboard ? navigator.clipboard.writeText(url) : document.execCommand('copy');
+            alert(`Invite link copied to clipboard:\n${url}`);
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* LOBBY LOGIC                                                                */
+        /* -------------------------------------------------------------------------- */
+        function joinOrCreateRoom() {
+            const roomCode = document.getElementById('input-room-code').value.trim().toUpperCase();
+            const managerName = document.getElementById('input-manager-name').value.trim();
+            if (!roomCode) return;
+
+            state.roomId = roomCode;
+            if (managerName) state.managers[state.activeUserIndex].name = managerName;
+
+            document.getElementById('nav-room-id').innerText = state.roomId;
+            document.getElementById('nav-manager-name').innerText = state.managers[state.activeUserIndex].name;
+
+            renderLobbyManagers();
+            syncRoomToCloud();
+        }
+
+        function setActiveManager(idx) {
+            state.activeUserIndex = idx;
+            document.getElementById('nav-manager-name').innerText = state.managers[idx].name;
+            renderLobbyManagers();
+            updateAuctionDisplay();
+            renderPitch();
+            renderSquadList();
+        }
+
+        function fillBots() {
+            const botNames = ["Real AI", "Barca AI", "City AI", "Bayern AI", "PSG AI", "Inter AI", "Arsenal AI"];
+            for (let i = 1; i < 8; i++) {
+                state.managers[i].name = botNames[i-1];
+                state.managers[i].isAi = true;
+            }
+            renderLobbyManagers();
+            syncRoomToCloud();
+        }
+
+        function renderLobbyManagers() {
+            const grid = document.getElementById('managers-grid');
+            grid.innerHTML = '';
+
+            state.managers.forEach((m, idx) => {
+                const isActive = idx === state.activeUserIndex;
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                    isActive 
+                        ? 'bg-emerald-500/10 border-emerald-500 text-white' 
+                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                }`;
+                card.onclick = () => setActiveManager(idx);
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full ${m.isAi ? 'bg-indigo-600' : 'bg-emerald-600'} flex items-center justify-center font-bold text-xs text-white">
+                            ${idx + 1}
+                        </div>
+                        <div>
+                            <div class="font-bold text-sm text-white flex items-center gap-1.5">
+                                ${m.name}
+                                ${isActive ? '<span class="text-[10px] bg-emerald-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">YOU</span>' : ''}
+                            </div>
+                            <div class="text-xs text-slate-500">${m.isAi ? 'AI Bot Manager' : 'Human Player'} • ${m.squad.length}/16 Players</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-mono text-xs font-bold text-emerald-400">€${m.budget}M</div>
+                        <div class="text-[10px] text-slate-500">Budget</div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* LIVE AUCTION ENGINE                                                        */
+        /* -------------------------------------------------------------------------- */
+        function updateAuctionDisplay() {
+            const p = MASTER_PLAYERS[state.auction.playerIndex];
+            if (!p) return;
+
+            document.getElementById('auc-player-num').innerText = state.auction.playerIndex + 1;
+            document.getElementById('auc-player-total').innerText = MASTER_PLAYERS.length;
+            document.getElementById('auc-name').innerText = p.name;
+            document.getElementById('auc-legacy-tag').innerText = p.tier;
+            document.getElementById('auc-ovr').innerText = p.rating;
+            document.getElementById('auc-pos').innerText = p.pos;
+
+            document.getElementById('auc-pac').innerText = p.pac;
+            document.getElementById('auc-sho').innerText = p.sho;
+            document.getElementById('auc-pas').innerText = p.pas;
+            document.getElementById('auc-dri').innerText = p.dri;
+            document.getElementById('auc-def').innerText = p.def;
+            document.getElementById('auc-phy').innerText = p.phy;
+
+            document.getElementById('auc-current-price').innerText = `€${state.auction.currentPrice}M`;
+            
+            const highestBidderText = state.auction.highestBidderIndex !== null 
+                ? state.managers[state.auction.highestBidderIndex].name 
+                : "Base Price";
+            document.getElementById('auc-highest-bidder').innerText = highestBidderText;
+            document.getElementById('auc-acting-manager').innerText = state.managers[state.activeUserIndex].name;
+
+            // Card Style dynamic change
+            const graphicCard = document.getElementById('auc-card-graphic');
+            if (p.tier.includes("GOAT")) {
+                graphicCard.className = "icon-card text-white p-5 rounded-2xl flex flex-col justify-between h-72 border-2 border-purple-400/40 relative shadow-2xl transition transform hover:scale-105";
+            } else {
+                graphicCard.className = "gold-card text-slate-950 p-5 rounded-2xl flex flex-col justify-between h-72 border-2 border-amber-300/40 relative shadow-2xl transition transform hover:scale-105";
+            }
+
+            renderAuctionManagersStatus();
+        }
+
+        function placeBid(amount) {
+            const manager = state.managers[state.activeUserIndex];
+            
+            if (manager.squad.length >= 16) {
+                alert(`${manager.name} already has a full 16-player squad!`);
+                return;
+            }
+
+            const newBid = state.auction.currentPrice + amount;
+            if (manager.budget < newBid) {
+                alert(`${manager.name} does not have enough budget (€${manager.budget}M) for €${newBid}M!`);
+                return;
+            }
+
+            state.auction.currentPrice = newBid;
+            state.auction.highestBidderIndex = state.activeUserIndex;
+
+            addAuctionLog(`💵 <strong>${manager.name}</strong> bids <strong>€${newBid}M</strong> for ${MASTER_PLAYERS[state.auction.playerIndex].name}!`);
+            updateAuctionDisplay();
+            syncRoomToCloud();
+        }
+
+        function triggerAiBids() {
+            const p = MASTER_PLAYERS[state.auction.playerIndex];
+            // Random AI bids if player is high rating
+            const aiCandidates = state.managers.filter((m, idx) => m.isAi && m.squad.length < 16 && m.budget > state.auction.currentPrice + 10);
+            
+            if (aiCandidates.length === 0) {
+                addAuctionLog(`🤖 No AI managers can outbid current price.`);
+                return;
+            }
+
+            const chosenAi = aiCandidates[Math.floor(Math.random() * aiCandidates.length)];
+            const bump = [10, 25][Math.floor(Math.random() * 2)];
+            state.auction.currentPrice += bump;
+            state.auction.highestBidderIndex = chosenAi.id;
+
+            addAuctionLog(`🤖 <strong>${chosenAi.name}</strong> outbids with <strong>€${state.auction.currentPrice}M</strong>!`);
+            updateAuctionDisplay();
+        }
+
+        function sellCurrentPlayer() {
+            const p = MASTER_PLAYERS[state.auction.playerIndex];
+
+            if (state.auction.highestBidderIndex !== null) {
+                const winner = state.managers[state.auction.highestBidderIndex];
+                winner.budget -= state.auction.currentPrice;
+                winner.squad.push({...p});
+
+                addAuctionLog(`🔨 <strong>SOLD!</strong> ${p.name} goes to <strong>${winner.name}</strong> for €${state.auction.currentPrice}M!`);
+            } else {
+                addAuctionLog(`❌ ${p.name} went unsold.`);
+            }
+
+            // Move to next player in list
+            state.auction.playerIndex = (state.auction.playerIndex + 1) % MASTER_PLAYERS.length;
+            const nextP = MASTER_PLAYERS[state.auction.playerIndex];
+            state.auction.currentPrice = nextP.basePrice;
+            state.auction.highestBidderIndex = null;
+
+            updateAuctionDisplay();
+            renderLobbyManagers();
+            syncRoomToCloud();
+        }
+
+        function addAuctionLog(msg) {
+            const logBox = document.getElementById('auc-log');
+            logBox.innerHTML += `<div>> ${msg}</div>`;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        function renderAuctionManagersStatus() {
+            const container = document.getElementById('auc-managers-status');
+            container.innerHTML = '';
+
+            state.managers.forEach(m => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex justify-between items-center text-xs";
+                card.innerHTML = `
+                    <div>
+                        <div class="font-bold text-white">${m.name}</div>
+                        <div class="text-[10px] text-slate-500">Slots: <strong class="text-amber-400">${m.squad.length}/16</strong></div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-mono font-bold text-emerald-400">€${m.budget}M</div>
+                        <div class="text-[10px] text-slate-500">Budget Left</div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* TACTICAL PITCH & SQUAD LOGIC                                               */
+        /* -------------------------------------------------------------------------- */
+        function changeFormation() {
+            state.formation = document.getElementById('formation-select').value;
+            renderPitch();
+        }
+
+        function renderPitch() {
+            document.getElementById('pitch-manager-badge').innerText = state.managers[state.activeUserIndex].name;
+            const fmt = FORMATIONS[state.formation];
+
+            ['fw', 'mf', 'df', 'gk'].forEach(rowKey => {
+                const rowEl = document.getElementById(`pitch-row-${rowKey}`);
+                rowEl.innerHTML = '';
+
+                fmt[rowKey].forEach(posKey => {
+                    const assignedPlayerId = state.lineupAssignments[posKey];
+                    const manager = state.managers[state.activeUserIndex];
+                    const player = manager.squad.find(p => p.id === assignedPlayerId);
+
+                    const slotBtn = document.createElement('div');
+                    slotBtn.className = `flex flex-col items-center justify-center p-2 rounded-xl transition cursor-pointer min-w-[70px] ${
+                        player 
+                            ? 'bg-slate-900/90 border-2 border-emerald-400 text-white shadow-lg' 
+                            : 'bg-black/40 border-2 border-dashed border-white/30 text-slate-300 hover:border-emerald-400'
+                    }`;
+
+                    slotBtn.innerHTML = `
+                        <span class="text-[10px] font-extrabold text-amber-400 uppercase tracking-widest">${posKey}</span>
+                        <span class="text-xs font-bold leading-tight truncate max-w-[80px]">${player ? player.name.split(' ')[0] : 'Empty'}</span>
+                        ${player ? `<span class="text-[10px] font-mono text-emerald-400 font-extrabold">${player.rating}</span>` : ''}
+                    `;
+                    rowEl.appendChild(slotBtn);
+                });
+            });
+
+            calculateTeamRatings();
+        }
+
+        function renderSquadList() {
+            const list = document.getElementById('squad-list');
+            list.innerHTML = '';
+
+            const manager = state.managers[state.activeUserIndex];
+
+            if (manager.squad.length === 0) {
+                list.innerHTML = `<div class="text-xs text-slate-500 text-center py-6">No players drafted yet. Visit the Live Auction!</div>`;
+                return;
+            }
+
+            manager.squad.forEach((p, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs";
+
+                card.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded text-[11px]">${p.rating}</span>
+                        <div>
+                            <div class="font-bold text-white">${p.name}</div>
+                            <div class="text-[10px] text-slate-500">${p.pos} • Bought for €${p.basePrice}M</div>
+                        </div>
+                    </div>
+                    <select onchange="assignPlayerToPos(${p.id}, this.value)" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-[11px] text-emerald-400 font-bold focus:outline-none">
+                        <option value="BENCH">Bench (Sub)</option>
+                        ${Object.keys(state.lineupAssignments).map(pos => `<option value="${pos}">${pos}</option>`).join('')}
+                        ${FORMATIONS[state.formation].fw.map(pos => `<option value="${pos}">${pos}</option>`).join('')}
+                        ${FORMATIONS[state.formation].mf.map(pos => `<option value="${pos}">${pos}</option>`).join('')}
+                        ${FORMATIONS[state.formation].df.map(pos => `<option value="${pos}">${pos}</option>`).join('')}
+                        ${FORMATIONS[state.formation].gk.map(pos => `<option value="${pos}">${pos}</option>`).join('')}
+                    </select>
+                `;
+                list.appendChild(card);
+            });
+
+            // Update Bench Count
+            const benchCount = manager.squad.length - Object.keys(state.lineupAssignments).length;
+            document.getElementById('subs-count-text').innerText = `${Math.max(0, benchCount)}/5`;
+        }
+
+        function assignPlayerToPos(playerId, pos) {
+            if (pos === "BENCH") {
+                // Remove from pitch assignment
+                Object.keys(state.lineupAssignments).forEach(k => {
+                    if (state.lineupAssignments[k] === playerId) delete state.lineupAssignments[k];
+                });
+            } else {
+                state.lineupAssignments[pos] = playerId;
+            }
+            renderPitch();
+            renderSquadList();
+        }
+
+        function autoFillLineup() {
+            const manager = state.managers[state.activeUserIndex];
+            const fmt = FORMATIONS[state.formation];
+            const allPositions = [...fmt.fw, ...fmt.mf, ...fmt.df, ...fmt.gk];
+
+            state.lineupAssignments = {};
+            const availableSquad = [...manager.squad].sort((a,b) => b.rating - a.rating);
+
+            allPositions.forEach((pos, idx) => {
+                if (availableSquad[idx]) {
+                    state.lineupAssignments[pos] = availableSquad[idx].id;
+                }
+            });
+
+            renderPitch();
+            renderSquadList();
+        }
+
+        function calculateTeamRatings() {
+            const manager = state.managers[state.activeUserIndex];
+            if (manager.squad.length === 0) return;
+
+            const avgOvr = Math.round(manager.squad.reduce((sum, p) => sum + p.rating, 0) / manager.squad.length);
+            const avgAtt = Math.round(manager.squad.reduce((sum, p) => sum + p.sho, 0) / manager.squad.length);
+            const avgMid = Math.round(manager.squad.reduce((sum, p) => sum + p.pas, 0) / manager.squad.length);
+            const avgDef = Math.round(manager.squad.reduce((sum, p) => sum + p.def, 0) / manager.squad.length);
+
+            document.getElementById('rate-ovr').innerText = avgOvr || 75;
+            document.getElementById('rate-att').innerText = avgAtt || 75;
+            document.getElementById('rate-mid').innerText = avgMid || 75;
+            document.getElementById('rate-def').innerText = avgDef || 75;
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* TOURNAMENT & COMMENTATOR SIMULATOR                                         */
+        /* -------------------------------------------------------------------------- */
+        function generateBracket() {
+            state.tournament = {
+                qf: [
+                    { id: 1, t1: state.managers[0], t2: state.managers[1], score1: null, score2: null, winner: null },
+                    { id: 2, t1: state.managers[2], t2: state.managers[3], score1: null, score2: null, winner: null },
+                    { id: 3, t1: state.managers[4], t2: state.managers[5], score1: null, score2: null, winner: null },
+                    { id: 4, t1: state.managers[6], t2: state.managers[7], score1: null, score2: null, winner: null }
+                ],
+                sf: [
+                    { id: 5, t1: null, t2: null, score1: null, score2: null, winner: null },
+                    { id: 6, t1: null, t2: null, score1: null, score2: null, winner: null }
+                ],
+                final: [
+                    { id: 7, t1: null, t2: null, score1: null, score2: null, winner: null }
+                ]
+            };
+            renderBracketUI();
+        }
+
+        function renderBracketUI() {
+            renderBracketColumn('bracket-qf', state.tournament.qf);
+            renderBracketColumn('bracket-sf', state.tournament.sf);
+            renderBracketColumn('bracket-final', state.tournament.final);
+        }
+
+        function renderBracketColumn(containerId, matches) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            matches.forEach(m => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 text-xs shadow-lg";
+
+                const t1Name = m.t1 ? m.t1.name : "TBD";
+                const t2Name = m.t2 ? m.t2.name : "TBD";
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-center ${m.winner && m.winner.id === m.t1?.id ? 'text-emerald-400 font-bold' : 'text-slate-300'}">
+                        <span>${t1Name}</span>
+                        <span class="font-mono">${m.score1 !== null ? m.score1 : '-'}</span>
+                    </div>
+                    <div class="flex justify-between items-center ${m.winner && m.winner.id === m.t2?.id ? 'text-emerald-400 font-bold' : 'text-slate-300'}">
+                        <span>${t2Name}</span>
+                        <span class="font-mono">${m.score2 !== null ? m.score2 : '-'}</span>
+                    </div>
+                    ${m.t1 && m.t2 && !m.winner ? `
+                        <button onclick="startMatchSimulation(${m.id})" class="w-full mt-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-400 hover:text-white border border-emerald-500/30 font-bold py-1 rounded text-[10px] transition">
+                            Simulate Match
+                        </button>
+                    ` : ''}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        /* Match Simulation Execution with Dramatic Commentary */
+        let activeSimInterval = null;
+        let simSpeed = 1000;
+
+        function startMatchSimulation(matchId) {
+            let match = [...state.tournament.qf, ...state.tournament.sf, ...state.tournament.final].find(m => m.id === matchId);
+            if (!match || !match.t1 || !match.t2) return;
+
+            document.getElementById('sim-team1-name').innerText = match.t1.name;
+            document.getElementById('sim-team2-name').innerText = match.t2.name;
+            document.getElementById('sim-score').innerText = "0 - 0";
+            
+            const commBox = document.getElementById('sim-commentary-box');
+            commBox.innerHTML = `<div class="text-emerald-400 font-bold">> ⚽ KICK OFF! The referee blows the whistle!</div>`;
+
+            let minute = 0;
+            let score1 = 0;
+            let score2 = 0;
+
+            if (activeSimInterval) clearInterval(activeSimInterval);
+
+            activeSimInterval = setInterval(() => {
+                minute += 10;
+                document.getElementById('sim-clock').innerText = `${minute}'`;
+
+                // Commentary Events
+                const rand = Math.random() * 100;
+                if (rand < 25) {
+                    score1++;
+                    commBox.innerHTML += `<div class="text-amber-400">⏱ ${minute}' 🎯 <strong>GOAALLL for ${match.t1.name}!</strong> A sensational curling strike into the top corner!</div>`;
+                } else if (rand > 75) {
+                    score2++;
+                    commBox.innerHTML += `<div class="text-sky-400">⏱ ${minute}' 🎯 <strong>GOAALLL for ${match.t2.name}!</strong> A brilliant counter-attack finish!</div>`;
+                } else if (rand > 45 && rand < 52) {
+                    commBox.innerHTML += `<div class="text-red-400">⏱ ${minute}' 🟥 <strong>RED CARD DRAMA!</strong> Wild sliding tackle down the wing! Player sent off!</div>`;
+                } else {
+                    commBox.innerHTML += `<div class="text-slate-400">⏱ ${minute}' Tactical tussle in midfield. Saved by the keeper.</div>`;
+                }
+
+                document.getElementById('sim-score').innerText = `${score1} - ${score2}`;
+                commBox.scrollTop = commBox.scrollHeight;
+
+                if (minute >= 90) {
+                    clearInterval(activeSimInterval);
+                    
+                    // Decide winner (tie-breaker penalty shootout if even)
+                    if (score1 === score2) {
+                        score1 += Math.random() > 0.5 ? 1 : 0;
+                        if (score1 === score2) score2++;
+                        commBox.innerHTML += `<div class="text-amber-400 font-bold">⏱ 120' 🥅 Penalty Shootout Drama decides the winner!</div>`;
+                    }
+
+                    match.score1 = score1;
+                    match.score2 = score2;
+                    match.winner = score1 > score2 ? match.t1 : match.t2;
+
+                    commBox.innerHTML += `<div class="text-emerald-400 font-extrabold text-sm border-t border-slate-800 pt-2">🏁 FULL TIME! Winner: ${match.winner.name}</div>`;
+                    
+                    advanceBracketWinners();
+                    renderBracketUI();
+                }
+            }, simSpeed);
+        }
+
+        function advanceBracketWinners() {
+            // QF to SF
+            if (state.tournament.qf[0].winner) state.tournament.sf[0].t1 = state.tournament.qf[0].winner;
+            if (state.tournament.qf[1].winner) state.tournament.sf[0].t2 = state.tournament.qf[1].winner;
+            if (state.tournament.qf[2].winner) state.tournament.sf[1].t1 = state.tournament.qf[2].winner;
+            if (state.tournament.qf[3].winner) state.tournament.sf[1].t2 = state.tournament.qf[3].winner;
+
+            // SF to Final
+            if (state.tournament.sf[0].winner) state.tournament.final[0].t1 = state.tournament.sf[0].winner;
+            if (state.tournament.sf[1].winner) state.tournament.final[0].t2 = state.tournament.sf[1].winner;
+        }
+
+        function toggleSimSpeed() {
+            simSpeed = simSpeed === 1000 ? 300 : 1000;
+            document.getElementById('sim-speed-btn').innerText = simSpeed === 300 ? "Speed: Fast ⚡" : "Speed: Normal";
+        }
+
+        function instantFinishSim() {
+            simSpeed = 50;
+        }
+
+        function simulateFullTournament() {
+            state.tournament.qf.forEach(m => {
+                if (!m.winner && m.t1 && m.t2) {
+                    m.score1 = Math.floor(Math.random() * 4);
+                    m.score2 = Math.floor(Math.random() * 4);
+                    if (m.score1 === m.score2) m.score1++;
+                    m.winner = m.score1 > m.score2 ? m.t1 : m.t2;
+                }
+            });
+            advanceBracketWinners();
+
+            state.tournament.sf.forEach(m => {
+                if (!m.winner && m.t1 && m.t2) {
+                    m.score1 = Math.floor(Math.random() * 4);
+                    m.score2 = Math.floor(Math.random() * 4);
+                    if (m.score1 === m.score2) m.score1++;
+                    m.winner = m.score1 > m.score2 ? m.t1 : m.t2;
+                }
+            });
+            advanceBracketWinners();
+
+            state.tournament.final.forEach(m => {
+                if (!m.winner && m.t1 && m.t2) {
+                    m.score1 = Math.floor(Math.random() * 4);
+                    m.score2 = Math.floor(Math.random() * 4);
+                    if (m.score1 === m.score2) m.score1++;
+                    m.winner = m.score1 > m.score2 ? m.t1 : m.t2;
+                }
+            });
+
+            renderBracketUI();
+        }
+
+        /* -------------------------------------------------------------------------- */
+        /* CLOUD SYNC & FIRESTORE HELPERS                                              */
+        /* -------------------------------------------------------------------------- */
+        async function syncRoomToCloud() {
+            if (!db) return;
+            try {
+                const { doc, setDoc } = window.FirebaseModule;
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', state.roomId);
+                await setDoc(roomRef, {
+                    managers: state.managers,
+                    auction: state.auction,
+                    updatedAt: Date.now()
+                }, { merge: true });
+            } catch (e) {
+                console.warn("Cloud sync error:", e);
+            }
+        }
+
+        function listenRoomState() {
+            if (!db) return;
+            try {
+                const { doc, onSnapshot } = window.FirebaseModule;
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', state.roomId);
+                onSnapshot(roomRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.managers) state.managers = data.managers;
+                        if (data.auction) state.auction = data.auction;
+                        renderLobbyManagers();
+                        updateAuctionDisplay();
+                    }
+                }, (err) => console.warn("Snapshot error:", err));
+            } catch (e) {
+                console.warn("Listen room error:", e);
+            }
+        }
+    </script>
+</body>
+</html>
